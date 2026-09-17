@@ -1,0 +1,33 @@
+{
+  "manifest": {
+    "packageId": "local-demo-route-grid",
+    "schemaVersion": 1,
+    "contentVersion": "1.0.0",
+    "gameVersion": "demo",
+    "createdAt": "2026-09-17T00:00:00.000Z",
+    "licenseNotice": "仅本地自用的合成演示内容，不得再分发。"
+  },
+  "materials": [
+    { "id": "mint", "name": "薄荷", "category": "合成材料", "respawnRule": { "kind": "duration", "hours": 48 }, "icon": "mint-demo" },
+    { "id": "mushroom", "name": "蘑菇", "category": "合成材料", "respawnRule": { "kind": "dailyReset", "timeZone": "Asia/Shanghai", "hour": 4, "minute": 0 }, "icon": "mushroom-demo" }
+  ],
+  "mapLayers": [
+    { "id": "demo-grid", "regionId": "demo-region", "assetPath": "/src/content/route-grid.svg", "bounds": { "width": 1000, "height": 600 }, "externalMapUrl": "https://act.hoyolab.com/" }
+  ],
+  "locationPoints": [
+    { "id": "mint-1", "materialId": "mint", "mapLayerId": "demo-grid", "coordinate": { "x": 160, "y": 120 }, "yieldRange": { "min": 1, "max": 2 }, "conditions": ["合成点位"], "sourceUrl": "https://act.hoyolab.com/", "sourceKind": "local-demo", "licenseNotice": "合成演示点位。", "verifiedAt": "2026-09-17T00:00:00.000Z", "gameVersion": "demo", "confidence": "high" },
+    { "id": "mint-2", "materialId": "mint", "mapLayerId": "demo-grid", "coordinate": { "x": 300, "y": 180 }, "yieldRange": { "min": 1, "max": 1 }, "conditions": ["合成点位"], "sourceUrl": "https://act.hoyolab.com/", "sourceKind": "local-demo", "licenseNotice": "合成演示点位。", "verifiedAt": "2026-09-17T00:00:00.000Z", "gameVersion": "demo", "confidence": "high" },
+    { "id": "mint-3", "materialId": "mint", "mapLayerId": "demo-grid", "coordinate": { "x": 420, "y": 150 }, "yieldRange": { "min": 1, "max": 2 }, "conditions": ["合成点位"], "sourceUrl": "https://act.hoyolab.com/", "sourceKind": "local-demo", "licenseNotice": "合成演示点位。", "verifiedAt": "2026-09-17T00:00:00.000Z", "gameVersion": "demo", "confidence": "medium" },
+    { "id": "mushroom-1", "materialId": "mushroom", "mapLayerId": "demo-grid", "coordinate": { "x": 620, "y": 300 }, "yieldRange": { "min": 1, "max": 2 }, "conditions": ["合成点位"], "sourceUrl": "https://act.hoyolab.com/", "sourceKind": "local-demo", "licenseNotice": "合成演示点位。", "verifiedAt": "2026-09-17T00:00:00.000Z", "gameVersion": "demo", "confidence": "high" },
+    { "id": "mushroom-2", "materialId": "mushroom", "mapLayerId": "demo-grid", "coordinate": { "x": 760, "y": 370 }, "yieldRange": { "min": 1, "max": 1 }, "conditions": ["合成点位"], "sourceUrl": "https://act.hoyolab.com/", "sourceKind": "local-demo", "licenseNotice": "合成演示点位。", "verifiedAt": "2026-09-17T00:00:00.000Z", "gameVersion": "demo", "confidence": "medium" },
+    { "id": "mushroom-3", "materialId": "mushroom", "mapLayerId": "demo-grid", "coordinate": { "x": 860, "y": 440 }, "yieldRange": { "min": 1, "max": 2 }, "conditions": ["合成点位"], "sourceUrl": "https://act.hoyolab.com/", "sourceKind": "local-demo", "licenseNotice": "合成演示点位。", "verifiedAt": "2026-09-17T00:00:00.000Z", "gameVersion": "demo", "confidence": "high" }
+  ],
+  "teleportAnchors": [
+    { "id": "mint-start", "mapLayerId": "demo-grid", "coordinate": { "x": 80, "y": 80 }, "name": "薄荷路线起点" },
+    { "id": "mushroom-start", "mapLayerId": "demo-grid", "coordinate": { "x": 540, "y": 260 }, "name": "蘑菇路线起点" }
+  ],
+  "routeTemplates": [
+    { "id": "mint-route-1", "materialIds": ["mint"], "steps": [{ "id": "mint-teleport", "kind": "teleport", "anchorId": "mint-start" }, { "id": "mint-collect", "kind": "collect", "locationPointId": "mint-1" }, { "id": "mint-note", "kind": "note", "message": "沿合成网格继续前进。" }], "estimatedMinutes": 4, "requirements": [] },
+    { "id": "mushroom-route-1", "materialIds": ["mushroom"], "steps": [{ "id": "mushroom-teleport", "kind": "teleport", "anchorId": "mushroom-start" }, { "id": "mushroom-collect", "kind": "collect", "locationPointId": "mushroom-1" }, { "id": "mushroom-note", "kind": "note", "message": "路线终点为合成网格标记。" }], "estimatedMinutes": 5, "requirements": [] }
+  ]
+}
