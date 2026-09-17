@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { database } from '../infrastructure/database'
 import { DomainError, UserDataRepository } from '../infrastructure/userDataRepository'
@@ -26,6 +26,17 @@ function createTwoStepPlan(): RoutePlan {
   return {
     id: 'plan-3', templateIds: ['template-3'], estimatedMinutes: 2,
     steps: [{ id: 'note-1', kind: 'note', title: '提示一' }, { id: 'note-2', kind: 'note', title: '提示二' }],
+  }
+}
+
+/** 创建两个采集步骤的路线，用于验证并发完成命令不能跨越初始步骤。 */
+function createTwoCollectPlan(): RoutePlan {
+  return {
+    id: 'plan-4', templateIds: ['template-4'], estimatedMinutes: 2,
+    steps: [
+      { id: 'collect-1', kind: 'collect', title: '薄荷', locationPointId: 'point-1', materialId: 'mint' },
+      { id: 'collect-2', kind: 'collect', title: '甜甜花', locationPointId: 'point-2', materialId: 'flower' },
+    ],
   }
 }
 
@@ -68,6 +79,48 @@ describe('RunSessionService', () => {
     const updated = await service.skipCurrentStep(session.id)
 
     expect(updated).toMatchObject({ currentStepIndex: 1, stepStates: ['skipped', 'pending'] })
+  })
+
+  it('两个从同一初始快照发起的完成命令不会串行完成两个步骤', async () => {
+    const repository = new UserDataRepository()
+    const service = new RunSessionService(repository, () => '2026-09-17T00:00:00.000Z', () => 'session-1')
+    const session = await service.createSession(createTwoCollectPlan())
+    const initial = await repository.getSession(session.id)
+    let readCount = 0
+    let releaseReads: () => void = () => undefined
+    const bothReadsFinished = new Promise<void>((resolve) => { releaseReads = resolve })
+
+    // 让两个命令都取得同一个初始快照后，才允许它们进入各自事务。
+    const getSession = vi.spyOn(repository, 'getSession').mockImplementation(async () => {
+      readCount += 1
+      if (readCount === 2) releaseReads()
+      await bothReadsFinished
+      return structuredClone(initial)
+    })
+
+    const [first, second] = await Promise.all([
+      service.completeCurrentStep(session.id),
+      service.completeCurrentStep(session.id),
+    ])
+
+    expect([first, second].some((result) => result.stepStates[1] === 'pending')).toBe(true)
+    getSession.mockRestore()
+    expect(await repository.getSession(session.id)).toMatchObject({
+      currentStepIndex: 1, stepStates: ['completed', 'pending'],
+    })
+    expect(await repository.listRecords()).toHaveLength(1)
+  })
+
+  it('撤销 completed 后重新完成会跳过后续 skipped 步骤并结束会话', async () => {
+    const service = new RunSessionService(new UserDataRepository(), () => '2026-09-17T00:00:00.000Z', () => 'session-1')
+    const session = await service.createSession(createTwoStepPlan())
+    await service.completeCurrentStep(session.id)
+    await service.skipCurrentStep(session.id)
+    await service.undoLatestCompletion(session.id)
+
+    const completed = await service.completeCurrentStep(session.id)
+
+    expect(completed).toMatchObject({ currentStepIndex: 2, stepStates: ['completed', 'skipped'] })
   })
 
   it('重载后可恢复仍有待处理步骤的完整路线快照', async () => {

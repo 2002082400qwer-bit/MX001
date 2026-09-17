@@ -34,9 +34,10 @@ export class RunSessionService {
   /** 完成当前待处理步骤，参数 sessionId 指定会话；终止会话重复调用会原样返回。 */
   async completeCurrentStep(sessionId: string): Promise<RunSession> {
     const existing = await this.requireSession(sessionId)
-    if (existing.currentStepIndex >= existing.stepStates.length) return existing
+    const expectedStepIndex = existing.currentStepIndex
 
     return this.repository.transactionallyUpdateSession(sessionId, (session) => {
+      if (session.currentStepIndex !== expectedStepIndex || session.currentStepIndex >= session.stepStates.length) return { session }
       const step = getCurrentPendingStep(session)
       const updated = transitionCurrentStep(session, 'completed', this.now())
       return step.kind === 'collect'
@@ -47,7 +48,11 @@ export class RunSessionService {
 
   /** 跳过当前待处理步骤，参数 sessionId 指定会话；跳过不产生采集记录。 */
   async skipCurrentStep(sessionId: string): Promise<RunSession> {
+    const existing = await this.requireSession(sessionId)
+    const expectedStepIndex = existing.currentStepIndex
+
     return this.repository.transactionallyUpdateSession(sessionId, (session) => {
+      if (session.currentStepIndex !== expectedStepIndex) return { session }
       getCurrentPendingStep(session)
       return { session: transitionCurrentStep(session, 'skipped', this.now()) }
     })
@@ -55,7 +60,11 @@ export class RunSessionService {
 
   /** 撤销本会话最后一个已完成步骤，参数 sessionId 指定会话，并删除匹配的采集记录。 */
   async undoLatestCompletion(sessionId: string): Promise<RunSession> {
+    const existing = await this.requireSession(sessionId)
+    const expectedStepIndex = existing.currentStepIndex
+
     return this.repository.transactionallyUpdateSession(sessionId, (session) => {
+      if (session.currentStepIndex !== expectedStepIndex) return { session }
       const stepIndex = findLatestCompletedStepIndex(session)
       if (stepIndex === -1) throw new DomainError('nothing-to-undo')
       const step = session.routeSnapshot.steps[stepIndex]
@@ -96,7 +105,15 @@ function transitionCurrentStep(
 ): RunSession {
   const stepStates = [...session.stepStates]
   stepStates[session.currentStepIndex] = state
-  return { ...session, currentStepIndex: session.currentStepIndex + 1, stepStates, updatedAt }
+  return { ...session, currentStepIndex: findNextPendingStepIndex(stepStates, session.currentStepIndex), stepStates, updatedAt }
+}
+
+/** 查找当前步骤之后的下一个待处理步骤，参数 stepStates 是状态序列，currentStepIndex 是刚转移的索引。 */
+function findNextPendingStepIndex(stepStates: RunSession['stepStates'], currentStepIndex: number): number {
+  for (let index = currentStepIndex + 1; index < stepStates.length; index += 1) {
+    if (stepStates[index] === 'pending') return index
+  }
+  return stepStates.length
 }
 
 /** 查找最后完成步骤的索引，参数 session 是待撤销会话；不存在时返回 -1。 */
