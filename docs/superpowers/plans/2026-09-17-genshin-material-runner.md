@@ -99,8 +99,7 @@ Expected: Rust 工具链名称包含 `x86_64-pc-windows-msvc`，并且 `cl.exe` 
 - [ ] **Step 2: 初始化 Git 与基础包清单**
 
 ```powershell
-git init
-git switch -c feature/genshin-material-runner
+# 若已由 using-git-worktrees 建立隔离分支，则保留现有 Git 仓库和分支，不重复执行 git init 或 git switch。
 npm init -y
 npm install react react-dom leaflet react-leaflet zustand dexie zod luxon
 npm install -D @tauri-apps/cli @types/react @types/react-dom @types/leaflet @vitejs/plugin-react typescript vite vitest jsdom @testing-library/jest-dom @testing-library/react @testing-library/user-event fake-indexeddb playwright
@@ -271,7 +270,7 @@ export function toLeafletCoordinate(
 }
 ```
 
-`loadBuiltInContent` 必须解析内置 JSON，并返回显式成功/失败结果，不能在模块导入时抛出未处理异常。
+`loadBuiltInContent` 必须解析内置 JSON，并返回显式成功/失败结果，不能在模块导入时抛出未处理异常。`parseBackupEnvelope` 只负责严格解析未知 JSON 为 `BackupEnvelope`，不读取文件、不写数据库；Task 5 的文件大小、UTF-8 解码和事务合并均调用该函数。
 
 - [ ] **Step 5: 验证领域模型**
 
@@ -314,7 +313,7 @@ it('按区域拼接匹配材料的人工路线并保留步骤快照', () => {
 // src/domain/refreshCalculator.test.ts
 it('按 UTC 采集时间计算持续型刷新时间', () => {
   expect(getNextAvailableAt({ kind: 'duration', hours: 48 }, '2026-09-17T00:00:00.000Z', new Date('2026-09-18T00:00:00.000Z')))
-    .toEqual({ kind: 'known', availableAt: '2026-09-19T00:00:00.000Z' })
+    .toEqual({ kind: 'known', availableAt: '2026-09-19T00:00:00.000Z', isAvailable: false })
 })
 ```
 
@@ -453,7 +452,7 @@ export async function transactionallyUpdateSession(
 
 - [ ] **Step 4: 实现会话状态机**
 
-`completeCurrentStep` 只推进 `pending` 当前步骤；若为 `collect`，写入以 `${sessionId}:${step.id}` 命名的记录。`skipCurrentStep` 不写记录。`undoLatestCompletion` 只允许撤销该会话最后完成的一步，恢复为 `pending` 并删除同一幂等键记录。无会话、没有可撤销步骤或非法迁移时返回明确领域错误。
+`completeCurrentStep` 只推进 `pending` 当前步骤；若为 `collect`，写入以 `${sessionId}:${step.id}` 命名的记录。对于已完成且没有后续 `pending` 步骤的会话，重复完成调用返回原会话且不新增记录。`skipCurrentStep` 不写记录。`undoLatestCompletion` 只允许撤销该会话最后完成的一步，恢复为 `pending` 并删除同一幂等键记录。无会话、没有可撤销步骤或非法迁移时返回明确领域错误。
 
 - [ ] **Step 5: 验证数据库与状态机**
 
@@ -653,7 +652,7 @@ Expected: FAIL，原因是刷新状态组件不存在。
 
 - [ ] **Step 3: 实现刷新状态与桌面视觉**
 
-`RefreshStatus` 对 `known` 显示本地格式化的时间，对 `unknown` 显示“无法估算”，对 `manual` 显示内容包说明。样式使用 CSS 变量提供深色、低干扰的跑图工作台：材料栏、中心地图、右侧当前步骤卡片；所有交互控件具备可见焦点状态和中文可访问名称。
+`RefreshStatus` 对 `known` 显示本地格式化的时间，对 `unknown` 显示“无法估算”，对 `manual` 显示内容包说明。将 `BackupPanel` 放入材料栏底部，使任务 5 的备份功能进入主应用。样式使用 CSS 变量提供深色、低干扰的跑图工作台：材料栏、中心地图、右侧当前步骤卡片；所有交互控件具备可见焦点状态和中文可访问名称。
 
 - [ ] **Step 4: 编写主流程端到端测试**
 
@@ -669,11 +668,11 @@ test('用户可创建、推进并恢复跑图会话', async ({ page }) => {
 })
 ```
 
-`e2e/backup.spec.ts` 必须上传超过 5 MiB 的文件并断言显示“备份文件过大”，再断言现有会话仍可继续。
+`e2e/backup.spec.ts` 使用文件输入控件的 `setInputFiles({ name: 'too-large.json', mimeType: 'application/json', buffer: Buffer.alloc(5 * 1024 * 1024 + 1) })` 上传超过 5 MiB 的文件，并断言显示“备份文件过大”，再断言现有会话仍可继续。
 
 - [ ] **Step 5: 验证全套 Web 测试和生产构建**
 
-Run: `npm run test -- --run` then `npx playwright test` then `npm run build`
+Run: `npm run test -- --run` then `npx playwright install chromium` then `npx playwright test` then `npm run build`
 
 Expected: 全部 PASS；不允许未处理的控制台错误、外部网络请求或未使用的测试快照。
 
