@@ -11,5 +11,8 @@ playwright-report/
 test-results/
 coverage/
 
+# TypeScript 增量编译缓存
+*.tsbuildinfo
+
 # 隔离工作树
 .worktrees/
