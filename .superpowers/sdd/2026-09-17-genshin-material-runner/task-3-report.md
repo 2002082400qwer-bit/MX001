@@ -28,3 +28,10 @@
 
 - 源码提交 SHA：`2ee6c15b57859eb7647e95154a7cdb13a6c8ab7d`（`feat: add route planning and refresh rules`）。
 - 阻塞：无。为使 TypeScript 能检查 Luxon API，新增开发依赖 `@types/luxon`。
+
+## 审查第 1 轮修正
+
+- RED：新增仅含 `note`、材料匹配但目标区域不匹配的模板用例后，目标测试退出码 `1`；实际错误返回 `planned`，而预期为 `{ kind: 'no-route', reason: 'missing-template' }`。
+- 修正：模板解析现在必须至少包含一个已解析且绑定到目标区域的 `teleport` 或 `collect` 步骤；`note` 仍可与这些地理步骤一起保留。
+- GREEN：目标测试退出码 `0`，`Test Files 2 passed (2)`、`Tests 8 passed (8)`；全量测试退出码 `0`，`Test Files 6 passed (6)`、`Tests 18 passed (18)`；构建与 `git diff --check` 均退出码 `0`。
+- 修正源码提交 SHA：`fd99e3d93162bf706cad548883d8a5c97cdae9fb`（`fix: require geographic route steps`）。
