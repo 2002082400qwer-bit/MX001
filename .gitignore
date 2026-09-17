@@ -1,0 +1,15 @@
+# Node.js 依赖与构建产物
+node_modules/
+dist/
+.vite/
+
+# Tauri/Rust 构建产物
+src-tauri/target/
+
+# 测试产物
+playwright-report/
+test-results/
+coverage/
+
+# 隔离工作树
+.worktrees/
