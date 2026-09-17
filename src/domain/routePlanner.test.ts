@@ -48,4 +48,20 @@ describe('planRoute', () => {
     expect(planRoute(content, { materialIds: ['mint'], regionId: 'other-region' }))
       .toEqual({ kind: 'no-route', reason: 'missing-template' })
   })
+
+  it('仅包含说明步骤的材料模板不能绕过区域匹配', () => {
+    const contentWithNoteOnlyTemplate = {
+      ...content,
+      routeTemplates: [{
+        id: 'mint-note-only',
+        materialIds: ['mint'],
+        steps: [{ id: 'mint-note-only-step', kind: 'note' as const, message: '没有地理点位' }],
+        estimatedMinutes: 1,
+        requirements: [],
+      }],
+    }
+
+    expect(planRoute(contentWithNoteOnlyTemplate, { materialIds: ['mint'], regionId: 'other-region' }))
+      .toEqual({ kind: 'no-route', reason: 'missing-template' })
+  })
 })

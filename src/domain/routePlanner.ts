@@ -59,14 +59,16 @@ function resolveTemplateSteps(
   regionId: string,
 ): ResolvedRouteStep[] | undefined {
   const steps: ResolvedRouteStep[] = []
+  let hasTargetRegionStep = false
 
   for (const step of template.steps) {
     const resolved = resolveStep(content, step, regionId)
     if (!resolved) return undefined
+    if (step.kind !== 'note') hasTargetRegionStep = true
     steps.push(resolved)
   }
 
-  return steps
+  return hasTargetRegionStep ? steps : undefined
 }
 
 /** 将一个模板步骤解析为完整快照并验证区域；参数 content 为内容包，step 为原始步骤，regionId 为目标区域。 */
