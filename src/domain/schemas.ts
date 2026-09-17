@@ -143,6 +143,10 @@ const resolvedRouteStepSchema = z.object({
   externalMapUrl: hoyolabUrlSchema.optional(),
   respawnRule: respawnRuleSchema.optional(),
   locationPointId: nonEmptyStringSchema.optional(),
+  anchorId: nonEmptyStringSchema.optional(),
+  materialId: nonEmptyStringSchema.optional(),
+  sourceUrl: httpsUrlSchema.optional(),
+  conditions: z.array(nonEmptyStringSchema).optional(),
 }).strict()
 
 const routePlanSchema = z.object({

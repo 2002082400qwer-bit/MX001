@@ -91,6 +91,10 @@ export type ResolvedRouteStep = {
   externalMapUrl?: string
   respawnRule?: RespawnRule
   locationPointId?: string
+  anchorId?: string
+  materialId?: string
+  sourceUrl?: string
+  conditions?: string[]
 }
 
 export type RoutePlan = {
