@@ -65,3 +65,45 @@ git diff --check
 ## 阻塞
 
 无。
+
+## 第 1 轮审查修正
+
+### RED
+
+新增了拒绝 `https://act.hoyolab.com:444/route?area=demo#step` 和 `https://user:password@act.hoyolab.com/route?area=demo#step` 的测试，并运行：
+
+```powershell
+npm run test -- --run src/domain/schemas.test.ts
+```
+
+完整结果：退出码 `1`；`6` 个测试中 `2 failed | 4 passed`。两个新增用例均提示“expected [Function] to throw an error”，证明旧校验错误接受非默认端口及 URL 凭据。
+
+### GREEN
+
+将 HoYoLAB 校验收紧为同时要求 `https:`、精确 `act.hoyolab.com` 主机、空端口、空用户名与空密码；未限制路径、查询或片段。函数实现旁已补充中文注释。
+
+```powershell
+npm run test -- --run src/domain/schemas.test.ts src/domain/mapCoordinates.test.ts src/domain/contentRepository.test.ts
+```
+
+退出码 `0`；`3 passed` 测试文件，`9 passed` 测试，耗时约 2.63 秒。
+
+### 本轮最终验证
+
+```powershell
+npm run test -- --run
+```
+
+退出码 `0`；`4 passed` 测试文件，`10 passed` 测试，耗时约 3.27 秒。
+
+```powershell
+npm run build
+```
+
+退出码 `0`；`tsc -b && vite build` 成功，Vite 转换 15 个模块并生成生产构建产物。
+
+```powershell
+git diff --check
+```
+
+退出码 `0`；无输出，未发现空白错误。
