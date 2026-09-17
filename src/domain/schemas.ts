@@ -31,9 +31,16 @@ const httpsUrlSchema = z.url().refine(
 )
 
 const hoyolabUrlSchema = httpsUrlSchema.refine(
-  /** 校验地图外链仅指向精确的 HoYoLAB 主机，参数 value 为待校验的 URL 字符串。 */
-  (value) => new URL(value).hostname === 'act.hoyolab.com',
-  '地图外链必须指向 act.hoyolab.com',
+  /** 校验地图外链为无端口和凭据的 HoYoLAB HTTPS 链接，参数 value 为待校验的 URL 字符串。 */
+  (value) => {
+    const url = new URL(value)
+    return url.protocol === 'https:'
+      && url.hostname === 'act.hoyolab.com'
+      && url.port === ''
+      && url.username === ''
+      && url.password === ''
+  },
+  '地图外链必须是不含端口和凭据的 act.hoyolab.com HTTPS 链接',
 )
 
 const routeStepSchema = z.discriminatedUnion('kind', [
