@@ -73,4 +73,19 @@ Ruling: 步骤状态迁移后的索引跳到后续第一个 `pending`（无则 l
 ## Task 5
 
 - 开始基线：`ccb711d`。
+- 初始实施：`96c9f05`；报告：`d481c60`。初次审查发现严格版本分类前可绕过结构校验、JSON.stringify 键序伪冲突两个 Important；Blob URL 卸载/替换竞态为已记录 Minor。
+- 第 1 轮修正：`3fd7857`；报告与 ledger：`4f6e7b7`。复审 APPROVED，无新问题；实施记录全量 Vitest 43/43、构建与 diff 检查通过。
+
+Ruling: 备份导入先用共享严格结构的 probe schema 验证完整性，之后才按 `formatVersion` 分类；这让未知字段或缺少嵌套数据永远是 invalid，不会被版本错误掩盖。代价是版本 1 解析会执行一次 probe 再正式解析，但最大文件仅 5 MiB，成本可忽略。
+
+Ruling: 会话冲突比较采用递归键排序的规范 JSON，保留数组顺序；这消除持久化对象插入顺序差异造成的伪冲突。已记录 Minor：`BackupPanel` 在异步导出与组件卸载/替换并发时可能泄漏 Blob URL，留待最终全分支审查。
+
+## Task 6
+
+- 开始基线：`4f6e7b7`。
+- 实施提交：`de09a68`；报告：`3645f59`。独立审查无 Critical/Important；已记录 Minor：创建失败后变更筛选时旧错误未清除、少数匿名函数缺少中文注释、计划列出的样式文件名与实现不一致。
+
+## Task 7
+
+- 开始基线：`bb2b230`。
 - 审查第 1 轮：两个 Important 已修正。备份版本分流先用严格 `backupEnvelopeProbeSchema` 验证完整结构与未知键，再对完整非 1 版本报告不支持；会话冲突比较改为递归排序对象键的规范 JSON 串，数组顺序不变。新增两个 RED 回归用例均稳定失败，GREEN 后目标 12/12、全量 43/43、build 与 diff-check 通过。Blob URL 卸载/替换生命周期竞态为 Minor，已记录到 Task 5 报告，留待最终审查，不在本轮混入。
