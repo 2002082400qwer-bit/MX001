@@ -191,6 +191,11 @@ export const backupEnvelopeSchema = z.object({
   }).strict(),
 }).strict()
 
+/** 用于在版本分流前严格校验备份完整结构，formatVersion 允许任意整数以便识别受支持范围外的完整备份。 */
+export const backupEnvelopeProbeSchema = backupEnvelopeSchema.extend({
+  formatVersion: z.number().int(),
+})
+
 /** 将已经通过内容 Schema 的值标注为领域内容包类型，参数 value 为 Schema 解析结果。 */
 export function asContentPackage(value: z.output<typeof contentPackageSchema>): ContentPackage {
   return value

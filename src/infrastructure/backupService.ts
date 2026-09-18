@@ -1,4 +1,5 @@
 import { loadBuiltInContent, parseBackupEnvelope } from '../domain/contentRepository'
+import { backupEnvelopeProbeSchema } from '../domain/schemas'
 import type { BackupEnvelope, CollectionRecord, RunSession, UserPreference } from '../domain/types'
 import { database } from './database'
 import { UserDataRepository } from './userDataRepository'
@@ -95,13 +96,12 @@ async function readBackupEnvelope(file: File): Promise<BackupEnvelope> {
     throw new BackupError('invalid-backup')
   }
 
-  if (typeof rawValue === 'object' && rawValue !== null && 'formatVersion' in rawValue
-    && rawValue.formatVersion !== 1) {
-    throw new BackupError('unsupported-backup-version')
-  }
+  const probedEnvelope = backupEnvelopeProbeSchema.safeParse(rawValue)
+  if (!probedEnvelope.success) throw new BackupError('invalid-backup')
+  if (probedEnvelope.data.formatVersion !== 1) throw new BackupError('unsupported-backup-version')
 
   try {
-    return parseBackupEnvelope(rawValue)
+    return parseBackupEnvelope(probedEnvelope.data)
   } catch {
     throw new BackupError('invalid-backup')
   }
@@ -109,5 +109,14 @@ async function readBackupEnvelope(file: File): Promise<BackupEnvelope> {
 
 /** 比较两个会话的完整持久化内容，参数分别为本机与导入的会话。 */
 function isSameSession(localSession: RunSession, importedSession: RunSession): boolean {
-  return JSON.stringify(localSession) === JSON.stringify(importedSession)
+  return toCanonicalJson(localSession) === toCanonicalJson(importedSession)
+}
+
+/** 递归排序对象键并保留数组顺序，将 JSON 可持久化值转为稳定字符串用于深比较。 */
+function toCanonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(toCanonicalJson).join(',')}]`
+  if (value !== null && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${toCanonicalJson((value as Record<string, unknown>)[key])}`).join(',')}}`
+  }
+  return JSON.stringify(value) ?? 'null'
 }

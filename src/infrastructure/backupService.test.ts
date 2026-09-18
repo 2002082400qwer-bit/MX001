@@ -95,6 +95,23 @@ describe('backupService', () => {
     expect(await database.sessions.get('session-1')).toEqual(localSession)
   })
 
+  it('会话内容仅对象属性插入顺序不同时不会报告冲突', async () => {
+    const localSession = createSession('session-1')
+    const reorderedSession: RunSession = {
+      updatedAt: localSession.updatedAt,
+      startedAt: localSession.startedAt,
+      stepStates: [],
+      currentStepIndex: 0,
+      routeSnapshot: { steps: [], estimatedMinutes: 1, templateIds: ['template-1'], id: 'plan-session-1' },
+      id: 'session-1',
+    }
+    await database.sessions.put(reorderedSession)
+
+    const report = await importBackup(createBackupFile({ sessions: [localSession] }))
+
+    expect(report.conflictedSessionIds).toEqual([])
+  })
+
   it('导入时永不覆盖本机偏好', async () => {
     await database.preferences.put({ id: 'default', value: { theme: 'light' } })
 
@@ -138,5 +155,13 @@ describe('backupService', () => {
     expect(await database.sessions.count()).toBe(0)
     expect(await database.collectionRecords.count()).toBe(0)
     recordPut.mockRestore()
+  })
+
+  it('拒绝含有未知字段的版本 2 备份并不误报版本不支持', async () => {
+    const validEnvelope = JSON.parse(await createBackupFile().text()) as BackupEnvelope
+    const file = new File([JSON.stringify({ ...validEnvelope, formatVersion: 2, unexpected: true })], 'unexpected-v2.json', { type: 'application/json' })
+
+    await expect(importBackup(file)).rejects.toMatchObject({ code: 'invalid-backup' })
+    expect(await database.sessions.count()).toBe(0)
   })
 })
