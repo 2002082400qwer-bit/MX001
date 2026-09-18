@@ -7,3 +7,4 @@
 {"date":"2026-09-17","summary":"完成 Task 4：新增 Dexie 三表持久化、事务仓储和可恢复路线会话状态机。采集记录以幂等键为主键，会话和记录副作用在同一 rw transaction 中提交；覆盖完成、重复完成、跳过、撤销、重载恢复、领域错误和事务回滚。全量 Vitest 29/29 与构建通过。源码提交 c513a3a，报告提交 5621530。","status":"Task 4 已完成，等待后续集成"}
 {"date":"2026-09-17","summary":"Task 4 审查第 1 轮修复：用屏障测试复现同初始快照的并发 complete 串行推进，并复现 [completed, skipped] 撤销后重做卡在 skipped 步骤。会话命令现在捕获 expectedStepIndex，并在事务内失配时安全 no-op；推进索引改为寻找下一个 pending。全量 Vitest 31/31 与构建通过。修复提交 c30c252，报告提交 244d4d9。","status":"Task 4 审查修复已完成，等待集成"}
 {"date":"2026-09-18","summary":"Task 5 完成本地 5MiB 严格 UTF-8/Zod 备份、单事务合并和稳定会话冲突比较；Task 6 完成材料选择、路线摘要和创建会话界面。Task 6 独立审查无 Critical/Important，记录了 3 项 Minor（旧创建错误清理、匿名函数中文注释、CSS 文件名）。当前分支 feature/genshin-material-runner 已有本地提交，但未配置 Git remote。","status":"等待配置远程仓库后推送"}
+{"date":"2026-09-18","summary":"已配置 origin 为 https://github.com/2002082400qwer-bit/MX001.git，并成功推送 feature/genshin-material-runner 分支，远程跟踪关系已建立。","status":"分支已推送，后续继续 Task 7"}
