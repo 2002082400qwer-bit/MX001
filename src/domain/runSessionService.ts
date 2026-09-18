@@ -82,6 +82,11 @@ export class RunSessionService {
     return this.repository.getResumableSession()
   }
 
+  /** 按会话标识读取最新持久化快照，参数 sessionId 是需要精确刷新的会话唯一标识。 */
+  async getSession(sessionId: string): Promise<RunSession | undefined> {
+    return this.repository.getSession(sessionId)
+  }
+
   /** 确认会话存在，参数 sessionId 是会话唯一标识；缺失时抛出领域错误。 */
   private async requireSession(sessionId: string): Promise<RunSession> {
     const session = await this.repository.getSession(sessionId)

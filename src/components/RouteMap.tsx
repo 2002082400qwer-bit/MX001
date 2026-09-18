@@ -27,7 +27,7 @@ export function RouteMap({ session, mapLayers }: RouteMapProps) {
   const bounds: [[number, number], [number, number]] = [[0, 0], [layer.bounds.height, layer.bounds.width]]
 
   return <section className="route-map" aria-label="路线地图">
-    <MapContainer crs={CRS.Simple} bounds={bounds} className="route-map__canvas">
+    <MapContainer key={layer.id} crs={CRS.Simple} bounds={bounds} className="route-map__canvas">
       <ImageOverlay url={routeGridUrl} bounds={bounds} />
       {lines.map((positions, index) => <Polyline key={`line-${index}`} positions={positions} />)}
       {positionedSteps.map(({ step, position, isCurrent }) => (

@@ -24,6 +24,7 @@ function createService() {
     skipCurrentStep: vi.fn(async () => current),
     undoLatestCompletion: vi.fn(async () => { current = session; return current }),
     getResumableSession: vi.fn(async () => current),
+    getSession: vi.fn(async (sessionId: string) => sessionId === session.id ? current : undefined),
   }
 }
 
@@ -34,9 +35,19 @@ it('完成采集步骤后重新读取下一步，并允许撤销最近完成项'
 
   await user.click(screen.getByRole('button', { name: '完成此点' }))
   expect(await screen.findByRole('heading', { name: '2. 下一步' })).toBeInTheDocument()
-  expect(service.getResumableSession).toHaveBeenCalled()
+  expect(service.getSession).toHaveBeenCalledWith('session-1')
   await user.click(screen.getByRole('button', { name: '撤销完成' }))
   expect(await screen.findByText('当前步骤')).toBeInTheDocument()
+})
+
+it('完成后按当前会话标识重新读取，不切换到其他可恢复会话', async () => {
+  const user = userEvent.setup()
+  const service = createService()
+  render(<RunMode session={session} service={service} />)
+
+  await user.click(screen.getByRole('button', { name: '完成此点' }))
+  expect(service.getSession).toHaveBeenCalledWith('session-1')
+  expect(service.getResumableSession).not.toHaveBeenCalled()
 })
 
 it('仅在用户点击时显示官方地图外链', async () => {

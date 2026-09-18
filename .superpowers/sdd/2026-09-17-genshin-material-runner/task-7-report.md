@@ -24,3 +24,9 @@
 ## 测试适配说明
 
 `react-leaflet` 在组件单测中以轻量 React 适配器替代，以断言路线组件输出的地图标记和连线；生产代码仍直接使用 Leaflet 的 `CRS.Simple`。该策略避免 jsdom 缺少真实地图容器尺寸带来的生命周期不稳定性。
+
+## 复审修正
+
+- 先新增 RED 测试，确认跨图层当前步骤变化时旧地图容器会被复用；`MapContainer` 现以 `layer.id` 作为 key，图层变化时重新创建并应用对应边界。
+- 先新增 RED 测试，确认跑图操作不能以全局“可恢复会话”结果覆盖当前会话；`RunSessionService` 新增按 ID 读取的 `getSession`，`RunMode` 在完成、跳过和撤销后精确重读当前会话。
+- 复审后验证：目标测试 6/6、全量测试 14 文件 57/57、`npm run build` 和 `git diff --check` 均通过。

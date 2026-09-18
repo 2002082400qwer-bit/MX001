@@ -1,17 +1,22 @@
 import { render, screen } from '@testing-library/react'
+import { useState } from 'react'
 import { expect, it, vi } from 'vitest'
 import type { MapLayer, RunSession } from '../domain/types'
 
 const { leafletCoordinate } = vi.hoisted(() => ({
   leafletCoordinate: vi.fn((coordinate: { x: number; y: number }) => [600 - coordinate.y, coordinate.x]),
 }))
+const { nextMapInstance } = vi.hoisted(() => ({ nextMapInstance: { value: 0 } }))
 
 vi.mock('../domain/mapCoordinates', () => ({
   toLeafletCoordinate: leafletCoordinate,
 }))
 
 vi.mock('react-leaflet', () => ({
-  MapContainer: ({ children }: { children: React.ReactNode }) => <section data-testid="leaflet-map">{children}</section>,
+  MapContainer: ({ children }: { children: React.ReactNode }) => {
+    const [instance] = useState(() => ++nextMapInstance.value)
+    return <section data-testid="leaflet-map" data-instance={String(instance)}>{children}</section>
+  },
   ImageOverlay: () => <div data-testid="grid-image" />,
   Marker: ({ children }: { children: React.ReactNode }) => <div data-testid="map-marker">{children}</div>,
   Popup: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
@@ -54,4 +59,15 @@ it('不跨图层连线', () => {
   render(<RouteMap session={createSession()} mapLayers={layers} />)
 
   expect(screen.getAllByTestId('route-line')).toHaveLength(1)
+})
+
+it('当前步骤切换到另一图层时重建地图容器', () => {
+  const first = createSession()
+  const { rerender } = render(<RouteMap session={first} mapLayers={layers} />)
+  const firstInstance = screen.getByTestId('leaflet-map').dataset.instance
+  const next = { ...first, currentStepIndex: 2 }
+
+  rerender(<RouteMap session={next} mapLayers={layers} />)
+  expect(screen.getByTestId('leaflet-map')).toHaveAttribute('data-instance', expect.not.stringMatching(`^${firstInstance}$`))
+  expect(screen.getByText('另一图层（当前步骤）')).toBeInTheDocument()
 })

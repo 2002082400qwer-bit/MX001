@@ -5,7 +5,7 @@ export type RunSessionCommands = {
   completeCurrentStep: (sessionId: string) => Promise<RunSession>
   skipCurrentStep: (sessionId: string) => Promise<RunSession>
   undoLatestCompletion: (sessionId: string) => Promise<RunSession>
-  getResumableSession: () => Promise<RunSession | undefined>
+  getSession: (sessionId: string) => Promise<RunSession | undefined>
 }
 
 type RunModeProps = {
@@ -26,7 +26,7 @@ export function RunMode({ session, service, onSessionChange }: RunModeProps) {
 
   /** 读取服务端最新可恢复会话并同步本地界面，参数 fallback 用于会话刚完成时保留服务返回的最终状态。 */
   async function refreshSession(fallback: RunSession): Promise<void> {
-    const refreshed = await service.getResumableSession()
+    const refreshed = await service.getSession(displayedSession.id)
     const next = refreshed ?? fallback
     setDisplayedSession(next)
     onSessionChange?.(next)

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ErrorNotice } from '../components/ErrorNotice'
 import { MaterialCatalog } from '../components/MaterialCatalog'
 import { RouteMap } from '../components/RouteMap'
-import { RunMode, type RunSessionCommands } from '../components/RunMode'
+import { RunMode } from '../components/RunMode'
 import { RouteSummary } from '../components/RouteSummary'
 import { loadBuiltInContent } from '../domain/contentRepository'
 import { planRoute } from '../domain/routePlanner'
@@ -15,7 +15,7 @@ import './App.css'
 type AppProps = {
   loadContent?: () => Result<ContentPackage, ContentValidationError>
   createSession?: (plan: RoutePlan) => Promise<{ id: string }>
-  sessionService?: Pick<RunSessionCommands, 'getResumableSession'>
+  sessionService?: Pick<RunSessionService, 'getResumableSession'>
 }
 
 /** 初始化内容与路线会话；参数可注入内容加载和恢复服务以支持界面测试。 */
