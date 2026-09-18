@@ -29,3 +29,12 @@
 - 源码提交：`96c9f052e3bbefd5d00cd862a42859f4aa6b5207`（`feat: add local backup and merge restore`）。
 - 源码文件 SHA-1（提交前对象）：`backupService.ts` `cde5e1b8d2fd36230c511814776107fbc33a3e35`；`backupService.test.ts` `c993b1cf7e7d4ed1e0da1ed772d884e7ce8587e7`；`BackupPanel.tsx` `bf81e8a0082df891f00f2d95ad435cfc6a9ed0bb`；`BackupPanel.test.tsx` `2352749c1491ac98bcd8a5d953aac8eefb29c9b1`。
 - 阻塞：无。未触碰 rustc 企业策略。
+
+## 审查第 1 轮修正
+
+- 修正源码提交：`3fd7857dd9352a8c9e4ead2f591f33bfb27b8e5f`（`fix: validate backup versions before classification`）。
+- RED：新增两个回归用例后，定向测试稳定复现两个 Important：带未知键的 v2 备份被错误归类为 `unsupported-backup-version`，以及仅对象键插入顺序不同的同内容会话被错误报告为冲突。
+- GREEN：`backupEnvelopeProbeSchema` 在保留所有严格对象、嵌套结构、必填字段与未知键拒绝规则的前提下，仅将 `formatVersion` 放宽为整数。导入先 probe；probe 失败为 `invalid-backup`，完整有效的非 1 版本为 `unsupported-backup-version`，版本 1 仍通过 `parseBackupEnvelope`。
+- GREEN：会话比较改为递归对象键排序的规范 JSON 序列化；数组顺序保持不变，标量遵循 JSON 持久化语义。因此对象属性插入顺序不再产生伪冲突。
+- 验证：目标 `backupService`/`BackupPanel` 测试为 2 files / 12 tests passed；全量为 10 files / 43 tests passed；`npm run build` 与 `git diff --check` passed。
+- Minor（不在本轮修复）：`BackupPanel` 的 Blob URL 在卸载/替换时存在生命周期竞态风险，已记录供最终审查；未改变该路径，避免混入本轮范围。
