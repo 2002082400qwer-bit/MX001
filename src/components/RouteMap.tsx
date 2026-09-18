@@ -1,4 +1,8 @@
-import { CRS } from 'leaflet'
+import { CRS, Icon } from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+import markerUrl from 'leaflet/dist/images/marker-icon.png'
+import markerRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png'
+import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png'
 import { ImageOverlay, MapContainer, Marker, Polyline, Popup } from 'react-leaflet'
 import routeGridUrl from '../content/route-grid.svg'
 import { toLeafletCoordinate } from '../domain/mapCoordinates'
@@ -14,6 +18,8 @@ type PositionedStep = {
   position: [number, number]
   isCurrent: boolean
 }
+
+const localMarkerIcon = new Icon({ iconUrl: markerUrl, iconRetinaUrl: markerRetinaUrl, shadowUrl: markerShadowUrl, iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] })
 
 /** 以 Leaflet CRS.Simple 呈现当前步骤所在图层，参数 session 提供路线快照，mapLayers 提供图层边界。 */
 export function RouteMap({ session, mapLayers }: RouteMapProps) {
@@ -31,7 +37,7 @@ export function RouteMap({ session, mapLayers }: RouteMapProps) {
       <ImageOverlay url={routeGridUrl} bounds={bounds} />
       {lines.map((positions, index) => <Polyline key={`line-${index}`} positions={positions} />)}
       {positionedSteps.map(({ step, position, isCurrent }) => (
-        <Marker key={step.id} position={position} opacity={isCurrent ? 1 : 0.65}>
+        <Marker key={step.id} position={position} icon={localMarkerIcon} opacity={isCurrent ? 1 : 0.65}>
           <Popup>{isCurrent ? `${step.title}（当前步骤）` : step.title}</Popup>
         </Marker>
       ))}

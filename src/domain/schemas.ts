@@ -52,7 +52,7 @@ const routeStepSchema = z.discriminatedUnion('kind', [
 const contentPackageBaseSchema = z.object({
   manifest: z.object({
     packageId: nonEmptyStringSchema,
-    schemaVersion: z.number().int().positive(),
+    schemaVersion: z.literal(1),
     contentVersion: nonEmptyStringSchema,
     gameVersion: nonEmptyStringSchema,
     createdAt: z.string().datetime({ offset: true }),
@@ -106,6 +106,21 @@ export const contentPackageSchema = contentPackageBaseSchema.superRefine(
   (content, context) => {
     const layersById = new Map(content.mapLayers.map((layer) => [layer.id, layer]))
     const materialIds = new Set(content.materials.map((material) => material.id))
+    for (const key of ['materials', 'mapLayers', 'locationPoints', 'teleportAnchors', 'routeTemplates'] as const) {
+      if (!hasUniqueIds(content[key])) context.addIssue({ code: 'custom', path: [key], message: '标识不能重复' })
+    }
+    if (!hasUniqueIds(content.routeTemplates.flatMap((template) => template.steps))) {
+      context.addIssue({ code: 'custom', path: ['routeTemplates'], message: '路线步骤标识不能重复' })
+    }
+    content.routeTemplates.forEach((template, index) => {
+      const invalidMaterial = template.materialIds.some((id) => !materialIds.has(id))
+      const invalidStep = template.steps.some((step) => step.kind === 'collect'
+        ? !content.locationPoints.some((point) => point.id === step.locationPointId && template.materialIds.includes(point.materialId))
+        : step.kind === 'teleport' && !content.teleportAnchors.some((anchor) => anchor.id === step.anchorId))
+      if (invalidMaterial || invalidStep || new Set(template.materialIds).size !== template.materialIds.length) {
+        context.addIssue({ code: 'custom', path: ['routeTemplates', index], message: '路线模板引用无效或重复' })
+      }
+    })
 
     content.locationPoints.forEach((point, index) => {
       const layer = layersById.get(point.mapLayerId)
@@ -147,14 +162,24 @@ const resolvedRouteStepSchema = z.object({
   materialId: nonEmptyStringSchema.optional(),
   sourceUrl: httpsUrlSchema.optional(),
   conditions: z.array(nonEmptyStringSchema).optional(),
-}).strict()
+}).strict().refine(
+  /** 采集必须包含点位与材料标识；传送必须包含锚点标识，参数 step 为快照步骤。 */
+  (step) => step.kind === 'collect' ? Boolean(step.locationPointId && step.materialId) : step.kind !== 'teleport' || Boolean(step.anchorId),
+  '步骤缺少必要标识',
+)
 
 const routePlanSchema = z.object({
   id: nonEmptyStringSchema,
+  packageId: nonEmptyStringSchema.optional(),
+  contentVersion: nonEmptyStringSchema.optional(),
   templateIds: z.array(nonEmptyStringSchema),
   estimatedMinutes: z.number().int().nonnegative(),
   steps: z.array(resolvedRouteStepSchema),
-}).strict()
+}).strict().refine(
+  /** 校验快照步骤标识唯一，参数 plan 为待导入路线快照。 */
+  (plan) => hasUniqueIds(plan.steps),
+  '路线步骤标识不能重复',
+)
 
 const runSessionSchema = z.object({
   id: nonEmptyStringSchema,
@@ -163,7 +188,15 @@ const runSessionSchema = z.object({
   stepStates: z.array(z.enum(['pending', 'completed', 'skipped'])),
   startedAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true }),
-}).strict()
+}).strict().refine(
+  /** 校验会话索引指向第一个待处理步骤，且状态数量与快照一致；参数 session 为待导入会话。 */
+  (session) => {
+    const firstPending = session.stepStates.indexOf('pending')
+    return session.stepStates.length === session.routeSnapshot.steps.length
+      && session.currentStepIndex === (firstPending < 0 ? session.stepStates.length : firstPending)
+  },
+  '会话步骤索引或状态序列无效',
+)
 
 const collectionRecordSchema = z.object({
   idempotencyKey: nonEmptyStringSchema,
@@ -176,7 +209,7 @@ const collectionRecordSchema = z.object({
   contentVersion: nonEmptyStringSchema,
 }).strict()
 
-export const backupEnvelopeSchema = z.object({
+const backupEnvelopeBaseSchema = z.object({
   formatVersion: z.literal(1),
   exportedAt: z.string().datetime({ offset: true }),
   packageId: nonEmptyStringSchema,
@@ -191,10 +224,42 @@ export const backupEnvelopeSchema = z.object({
   }).strict(),
 }).strict()
 
+export const backupEnvelopeSchema = backupEnvelopeBaseSchema.superRefine(
+  /** 校验会话与采集记录的双向一致性；参数 envelope 为已完成字段验证的备份。 */
+  (envelope, context) => {
+    if (!hasUniqueIds(envelope.sessions) || new Set(envelope.collectionRecords.map((record) => record.idempotencyKey)).size !== envelope.collectionRecords.length) {
+      context.addIssue({ code: 'custom', message: '会话或采集记录标识重复' })
+    }
+    for (const record of envelope.collectionRecords) {
+      const session = envelope.sessions.find((item) => item.id === record.sessionId)
+      const index = session?.routeSnapshot.steps.findIndex((step) => step.id === record.routeStepId) ?? -1
+      const step = session?.routeSnapshot.steps[index]
+      if (!session || !step || step.kind !== 'collect' || session.stepStates[index] !== 'completed'
+        || step.locationPointId !== record.locationPointId || step.materialId !== record.materialId
+        || record.idempotencyKey !== `${session.id}:${step.id}`) {
+        context.addIssue({ code: 'custom', message: '采集记录与会话步骤不一致' })
+      }
+    }
+    const recordKeys = new Set(envelope.collectionRecords.map((record) => record.idempotencyKey))
+    for (const session of envelope.sessions) {
+      session.routeSnapshot.steps.forEach((step, index) => {
+        if (step.kind === 'collect' && session.stepStates[index] === 'completed' && !recordKeys.has(`${session.id}:${step.id}`)) {
+          context.addIssue({ code: 'custom', message: '已完成采集步骤缺少采集记录' })
+        }
+      })
+    }
+  },
+)
+
 /** 用于在版本分流前严格校验备份完整结构，formatVersion 允许任意整数以便识别受支持范围外的完整备份。 */
-export const backupEnvelopeProbeSchema = backupEnvelopeSchema.extend({
+export const backupEnvelopeProbeSchema = backupEnvelopeBaseSchema.extend({
   formatVersion: z.number().int(),
 })
+
+/** 判断实体数组是否具有唯一标识；参数 values 为带有 id 字段的实体集合。 */
+function hasUniqueIds(values: ReadonlyArray<{ id: string }>): boolean {
+  return new Set(values.map((value) => value.id)).size === values.length
+}
 
 /** 将已经通过内容 Schema 的值标注为领域内容包类型，参数 value 为 Schema 解析结果。 */
 export function asContentPackage(value: z.output<typeof contentPackageSchema>): ContentPackage {

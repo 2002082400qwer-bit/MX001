@@ -46,6 +46,7 @@ export async function importBackup(file: File): Promise<BackupImportReport> {
     }
 
     for (const importedRecord of envelope.collectionRecords) {
+      if (report.conflictedSessionIds.includes(importedRecord.sessionId)) continue
       const localRecord = await database.collectionRecords.get(importedRecord.idempotencyKey)
       if (!localRecord) {
         await database.collectionRecords.put(importedRecord)

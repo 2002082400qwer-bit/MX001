@@ -99,6 +99,8 @@ export type ResolvedRouteStep = {
 
 export type RoutePlan = {
   id: string
+  packageId?: string
+  contentVersion?: string
   templateIds: string[]
   estimatedMinutes: number
   steps: ResolvedRouteStep[]

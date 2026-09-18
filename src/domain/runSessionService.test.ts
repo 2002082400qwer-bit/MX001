@@ -5,6 +5,8 @@ import { database } from '../infrastructure/database'
 import { DomainError, UserDataRepository } from '../infrastructure/userDataRepository'
 import type { RoutePlan } from './types'
 import { RunSessionService } from './runSessionService'
+import { loadBuiltInContent } from './contentRepository'
+import { planRoute } from './routePlanner'
 
 /** 创建含采集步骤的路线，用于验证会话状态变化和采集记录。 */
 function createCollectPlan(): RoutePlan {
@@ -41,6 +43,18 @@ function createTwoCollectPlan(): RoutePlan {
 }
 
 describe('RunSessionService', () => {
+  it('内容包生成的路线在采集记录中保留真实来源版本', async () => {
+    const content = loadBuiltInContent()
+    if (!content.ok) throw new Error('内容无效')
+    const route = planRoute(content.value, { materialIds: ['mint'], regionId: 'demo-region' })
+    if (route.kind !== 'planned') throw new Error('路线缺失')
+    const repository = new UserDataRepository()
+    const service = new RunSessionService(repository)
+    const session = await service.createSession(route.plan)
+    await service.completeCurrentStep(session.id)
+    await service.completeCurrentStep(session.id)
+    expect(await repository.listRecords()).toMatchObject([{ packageId: 'local-demo-route-grid', contentVersion: '1.0.0' }])
+  })
   /** 每个用例重建 IndexedDB，确保会话和记录相互隔离。 */
   beforeEach(async () => {
     database.close()

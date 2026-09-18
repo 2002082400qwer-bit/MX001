@@ -90,13 +90,13 @@ function verifyDevUrl(config) {
 }
 
 /**
- * 确认 app.capabilities 显式且只引用默认 capability，避免隐式载入额外文件或内联权限。
+ * 确认 app.security.capabilities 显式且只引用默认 capability，拒绝旧位置配置。
  * @param config Tauri 主配置对象。
  */
 function verifyConfiguredCapabilities(config) {
-  const capabilities = config.app?.capabilities
-  if (!Array.isArray(capabilities) || capabilities.length !== 1 || capabilities[0] !== 'default') {
-    throw new Error('app.capabilities 必须且只能引用 default capability')
+  const capabilities = config.app?.security?.capabilities
+  if (config.app?.capabilities !== undefined || !Array.isArray(capabilities) || capabilities.length !== 1 || capabilities[0] !== 'default') {
+    throw new Error('app.security.capabilities 必须且只能引用 default capability')
   }
 }
 

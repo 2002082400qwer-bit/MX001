@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { App } from './App'
@@ -110,3 +110,14 @@ function createManualRefreshContent() {
   if (!result.ok) throw new Error('演示内容应当有效')
   return { ...result.value, materials: result.value.materials.map((material) => material.id === 'mint' ? { ...material, respawnRule: { kind: 'manual' as const, message: '请按路线备注确认刷新' } } : material) }
 }
+
+/** 验证刷新历史在目录显示，并对同一点跨会话只采用最新记录。 */
+it('目录展示持久化采集历史且同一点采用最新采集时间', async () => {
+  const oldRecord = createCollectionRecord('old')
+  const recentRecord = { ...createCollectionRecord('new'), collectedAt: new Date().toISOString() }
+  render(<App listCollectionRecords={async () => [recentRecord, oldRecord]} />)
+  const history = await screen.findByRole('region', { name: '采集刷新历史' })
+  expect(await within(history).findByText(/可采集于/)).toBeInTheDocument()
+  expect(within(history).queryByText('现在可采集')).not.toBeInTheDocument()
+  expect(within(history).getAllByRole('listitem')).toHaveLength(1)
+})

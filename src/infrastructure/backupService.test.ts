@@ -9,9 +9,9 @@ import { exportBackup, importBackup } from './backupService'
 function createSession(id: string, updatedAt = '2026-09-17T00:00:00.000Z'): RunSession {
   return {
     id,
-    routeSnapshot: { id: `plan-${id}`, templateIds: ['template-1'], estimatedMinutes: 1, steps: [] },
-    currentStepIndex: 0,
-    stepStates: [],
+    routeSnapshot: { id: `plan-${id}`, templateIds: ['template-1'], estimatedMinutes: 1, steps: [{ id: 'step-1', kind: 'collect', title: '采集', locationPointId: 'point-1', materialId: 'material-1' }] },
+    currentStepIndex: 1,
+    stepStates: ['completed'],
     startedAt: '2026-09-17T00:00:00.000Z',
     updatedAt,
   }
@@ -87,12 +87,15 @@ describe('backupService', () => {
 
   it('会话 ID 相同且内容不同时时保留本机内容并报告冲突', async () => {
     const localSession = createSession('session-1', '2026-09-17T02:00:00.000Z')
+    localSession.currentStepIndex = 0
+    localSession.stepStates = ['pending']
     await database.sessions.put(localSession)
 
     const report = await importBackup(createBackupFile({ sessions: [createSession('session-1')] }))
 
     expect(report.conflictedSessionIds).toEqual(['session-1'])
     expect(await database.sessions.get('session-1')).toEqual(localSession)
+    expect(await database.collectionRecords.count()).toBe(0)
   })
 
   it('会话内容仅对象属性插入顺序不同时不会报告冲突', async () => {
@@ -100,9 +103,9 @@ describe('backupService', () => {
     const reorderedSession: RunSession = {
       updatedAt: localSession.updatedAt,
       startedAt: localSession.startedAt,
-      stepStates: [],
-      currentStepIndex: 0,
-      routeSnapshot: { steps: [], estimatedMinutes: 1, templateIds: ['template-1'], id: 'plan-session-1' },
+      stepStates: localSession.stepStates,
+      currentStepIndex: localSession.currentStepIndex,
+      routeSnapshot: { steps: localSession.routeSnapshot.steps, estimatedMinutes: 1, templateIds: ['template-1'], id: 'plan-session-1' },
       id: 'session-1',
     }
     await database.sessions.put(reorderedSession)

@@ -40,6 +40,8 @@ export function planRoute(content: ContentPackage, input: PlanRouteInput): Route
     kind: 'planned',
     plan: {
       id: `${content.manifest.packageId}:${templateIds.join(',')}`,
+      packageId: content.manifest.packageId,
+      contentVersion: content.manifest.contentVersion,
       templateIds,
       estimatedMinutes,
       steps,

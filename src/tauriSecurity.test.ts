@@ -35,8 +35,8 @@ function createSafeConfig(overrides: object = {}): object {
   return {
     build: { devUrl: 'http://localhost:5173' },
     app: {
-      capabilities: ['default'],
       security: {
+        capabilities: ['default'],
         csp: "default-src 'self'; img-src 'self' data:; connect-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'",
       },
     },
@@ -66,6 +66,15 @@ afterEach(() => {
 })
 
 describe('verify-tauri-security', () => {
+  it('接受官方 security.capabilities 位置并拒绝旧 app.capabilities 位置', () => {
+    const valid = createSecurityFixture(createSafeConfig())
+    expect(runVerifier(valid.configPath, valid.capabilityPath)).toContain('通过')
+    const misplaced = createSafeConfig() as { app: { capabilities?: string[]; security: { capabilities?: string[] } } }
+    misplaced.app.capabilities = ['default']
+    delete misplaced.app.security.capabilities
+    const invalid = createSecurityFixture(misplaced)
+    expect(() => runVerifier(invalid.configPath, invalid.capabilityPath)).toThrow(/capabilit/)
+  })
   it('拒绝关闭 CSP 的危险配置', () => {
     const fixture = createSecurityFixture(createSafeConfig({ app: { capabilities: ['default'], security: { csp: "default-src 'self'; img-src 'self' data:", dangerousDisableAssetCspModification: true } } }))
     expect(() => runVerifier(fixture.configPath, fixture.capabilityPath)).toThrow(/CSP/)
@@ -86,8 +95,8 @@ describe('verify-tauri-security', () => {
     expect(() => runVerifier(fixture.configPath, fixture.capabilityPath)).toThrow(/CSP/)
   })
 
-  it('拒绝 app.capabilities 中的额外 capability', () => {
-    const fixture = createSecurityFixture(createSafeConfig({ app: { capabilities: ['default', 'extra'], security: { csp: "default-src 'self'; img-src 'self' data:; connect-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" } } }))
+  it('拒绝 app.security.capabilities 中的额外 capability', () => {
+    const fixture = createSecurityFixture(createSafeConfig({ app: { security: { capabilities: ['default', 'extra'], csp: "default-src 'self'; img-src 'self' data:; connect-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" } } }))
     expect(() => runVerifier(fixture.configPath, fixture.capabilityPath)).toThrow(/capability/)
   })
 

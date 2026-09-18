@@ -143,8 +143,8 @@ function createCollectionRecord(
     locationPointId: step.locationPointId,
     materialId: step.materialId,
     collectedAt,
-    packageId: session.routeSnapshot.id,
-    contentVersion: 'snapshot',
+    packageId: session.routeSnapshot.packageId ?? session.routeSnapshot.id,
+    contentVersion: session.routeSnapshot.contentVersion ?? 'snapshot',
   }
 }
 

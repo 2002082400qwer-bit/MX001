@@ -6,3 +6,9 @@ declare module '*.svg' {
   const source: string
   export default source
 }
+
+/** 声明 Vite 打包 Leaflet 本地 PNG 资源后的 URL 类型。 */
+declare module '*.png' {
+  const source: string
+  export default source
+}

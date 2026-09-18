@@ -2,22 +2,33 @@ import { useEffect, useRef, useState } from 'react'
 
 import { BackupError, exportBackup, importBackup } from '../infrastructure/backupService'
 
-/** 渲染本地数据备份导入和导出的可访问界面，仅使用浏览器 File 与 Blob API。 */
-export function BackupPanel() {
+/** 渲染本地备份界面；参数 onImported 在导入事务成功后通知应用重新读取用户数据。 */
+export function BackupPanel({ onImported }: { onImported?: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const mounted = useRef(false)
+  const currentDownloadUrl = useRef<string | undefined>(undefined)
   const [downloadUrl, setDownloadUrl] = useState<string>()
   const [message, setMessage] = useState('')
 
-  /** 在组件卸载时释放临时下载链接，参数无需由调用方提供。 */
-  useEffect(() => () => {
-    if (downloadUrl) URL.revokeObjectURL(downloadUrl)
-  }, [downloadUrl])
+  /** 标记组件生命周期，避免异步导出在卸载后创建无法回收的下载链接。 */
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      if (currentDownloadUrl.current) URL.revokeObjectURL(currentDownloadUrl.current)
+      currentDownloadUrl.current = undefined
+    }
+  }, [])
 
   /** 生成 Blob 临时下载链接并更新成功提示，参数为按钮点击事件。 */
   async function handleExport(): Promise<void> {
     try {
       const backup = await exportBackup()
-      setDownloadUrl(URL.createObjectURL(backup))
+      if (!mounted.current) return
+      const nextUrl = URL.createObjectURL(backup)
+      if (currentDownloadUrl.current) URL.revokeObjectURL(currentDownloadUrl.current)
+      currentDownloadUrl.current = nextUrl
+      setDownloadUrl(nextUrl)
       setMessage('备份已生成，请下载备份文件。')
     } catch {
       setMessage('无法生成备份，请稍后重试。')
@@ -32,6 +43,7 @@ export function BackupPanel() {
 
     try {
       const report = await importBackup(file)
+      onImported?.()
       const conflictMessage = report.conflictedSessionIds.length > 0
         ? `，保留了 ${report.conflictedSessionIds.length} 个本机会话冲突`
         : ''
