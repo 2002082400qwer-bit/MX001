@@ -23,5 +23,5 @@
 
 ## SHA 与阻塞
 
-- 提交 SHA：待写入。
+- 源码提交 SHA：`de09a68cc010942f82db34cba11162870a7ca21f`（`feat: add material selection and route creation`）。
 - 阻塞：无。Dexie 不需要 App 集成测试：测试注入会话创建函数，生产路径仍由 `RunSessionService(UserDataRepository)` 处理持久化。
