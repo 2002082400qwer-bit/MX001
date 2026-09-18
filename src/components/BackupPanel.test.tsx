@@ -20,3 +20,15 @@ it('提供中文可访问名称的导入和导出控件', async () => {
   createObjectURL.mockRestore()
   revokeObjectURL.mockRestore()
 })
+
+/** 验证不可见文件输入不占据键盘焦点，具名导入按钮仍可触发文件选择。 */
+it('通过具名导入按钮提供键盘可达的文件选择入口', async () => {
+  const user = userEvent.setup()
+  render(<BackupPanel />)
+  const input = screen.getByLabelText('选择备份文件')
+  const openFilePicker = vi.spyOn(input, 'click')
+
+  expect(input).toHaveAttribute('tabindex', '-1')
+  await user.click(screen.getByRole('button', { name: '导入备份' }))
+  expect(openFilePicker).toHaveBeenCalledOnce()
+})

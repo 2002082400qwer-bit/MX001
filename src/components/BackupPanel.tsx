@@ -49,6 +49,7 @@ export function BackupPanel() {
         aria-label="选择备份文件"
         accept="application/json,.json"
         type="file"
+        tabIndex={-1}
         style={{ position: 'absolute', width: 1, height: 1, opacity: 0 }}
         onChange={handleImport}
       />

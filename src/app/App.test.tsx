@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { App } from './App'
-import type { RoutePlan } from '../domain/types'
+import { loadBuiltInContent } from '../domain/contentRepository'
+import type { CollectionRecord, RoutePlan, RunSession } from '../domain/types'
 import { useAppStore } from '../state/appStore'
 
 /** 每项应用测试前重置全局瞬态界面状态，避免前一会话影响后续场景。 */
@@ -63,3 +64,49 @@ it('发现可恢复会话时显示继续上次跑图入口', async () => {
 
   expect(await screen.findByRole('button', { name: '继续上次跑图' })).toBeInTheDocument()
 })
+
+/** 验证恢复会话后使用采集记录和材料人工规则展示刷新说明。 */
+it('恢复会话后显示采集记录对应的人工刷新说明', async () => {
+  const user = userEvent.setup()
+  const session = createCollectedSession()
+  const record = createCollectionRecord(session.id)
+  const service = { getResumableSession: vi.fn(async () => session) }
+  render(<App loadContent={() => ({ ok: true, value: createManualRefreshContent() })} sessionService={service} listCollectionRecords={async () => [record]} />)
+
+  await user.click(await screen.findByRole('button', { name: '继续上次跑图' }))
+
+  expect(await screen.findByText('请按路线备注确认刷新')).toBeInTheDocument()
+})
+
+/** 验证恢复会话后使用采集记录和材料持续规则展示已知刷新状态。 */
+it('恢复会话后显示采集记录对应的已知刷新状态', async () => {
+  const user = userEvent.setup()
+  const session = createCollectedSession()
+  const record = createCollectionRecord(session.id)
+  const service = { getResumableSession: vi.fn(async () => session) }
+  render(<App sessionService={service} listCollectionRecords={async () => [record]} />)
+
+  await user.click(await screen.findByRole('button', { name: '继续上次跑图' }))
+
+  expect(await screen.findByText('现在可采集')).toBeInTheDocument()
+})
+
+/** 创建包含已完成采集步骤的可恢复会话，参数无需调用方提供。 */
+function createCollectedSession(): RunSession {
+  return {
+    id: 'refresh-session', currentStepIndex: 1, stepStates: ['completed', 'pending'], startedAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+    routeSnapshot: { id: 'refresh-route', templateIds: ['mint-route-1'], estimatedMinutes: 1, steps: [{ id: 'mint-collect', kind: 'collect', title: '采集薄荷', locationPointId: 'mint-1', materialId: 'mint' }, { id: 'mint-note', kind: 'note', title: '继续路线' }] },
+  }
+}
+
+/** 创建与会话采集步骤匹配的持久化记录，参数 sessionId 指定记录所属会话。 */
+function createCollectionRecord(sessionId: string): CollectionRecord {
+  return { idempotencyKey: `${sessionId}:mint-collect`, sessionId, routeStepId: 'mint-collect', locationPointId: 'mint-1', materialId: 'mint', collectedAt: '2026-01-01T00:00:00.000Z', packageId: 'local-demo-route-grid', contentVersion: '1.0.0' }
+}
+
+/** 创建将薄荷改为人工刷新的内容包，参数无需调用方提供。 */
+function createManualRefreshContent() {
+  const result = loadBuiltInContent()
+  if (!result.ok) throw new Error('演示内容应当有效')
+  return { ...result.value, materials: result.value.materials.map((material) => material.id === 'mint' ? { ...material, respawnRule: { kind: 'manual' as const, message: '请按路线备注确认刷新' } } : material) }
+}

@@ -8,8 +8,9 @@ import { RunMode } from '../components/RunMode'
 import { RouteSummary } from '../components/RouteSummary'
 import { loadBuiltInContent } from '../domain/contentRepository'
 import { planRoute } from '../domain/routePlanner'
+import { getNextAvailableAt } from '../domain/refreshCalculator'
 import { RunSessionService } from '../domain/runSessionService'
-import type { ContentPackage, ContentValidationError, Result, RoutePlan, RunSession } from '../domain/types'
+import type { CollectionRecord, ContentPackage, ContentValidationError, RefreshEstimate, Result, RoutePlan, RunSession } from '../domain/types'
 import { UserDataRepository } from '../infrastructure/userDataRepository'
 import { useAppStore } from '../state/appStore'
 import './App.css'
@@ -18,15 +19,17 @@ type AppProps = {
   loadContent?: () => Result<ContentPackage, ContentValidationError>
   createSession?: (plan: RoutePlan) => Promise<{ id: string }>
   sessionService?: Pick<RunSessionService, 'getResumableSession'>
+  listCollectionRecords?: () => Promise<CollectionRecord[]>
 }
 
 /** 初始化内容与路线会话；参数可注入内容加载和恢复服务以支持界面测试。 */
-export function App({ loadContent = loadBuiltInContent, createSession, sessionService }: AppProps) {
+export function App({ loadContent = loadBuiltInContent, createSession, sessionService, listCollectionRecords }: AppProps) {
   const [content, setContent] = useState<ContentPackage>()
   const [loadError, setLoadError] = useState<string>()
   const [creationError, setCreationError] = useState<string>()
   const [activeSession, setActiveSession] = useState<RunSession>()
   const [resumableSession, setResumableSession] = useState<RunSession>()
+  const [refreshEstimate, setRefreshEstimate] = useState<RefreshEstimate>({ kind: 'unknown' })
   const selectedMaterialIds = useAppStore((state) => state.selectedMaterialIds)
   const regionId = useAppStore((state) => state.regionId)
   const view = useAppStore((state) => state.view)
@@ -34,7 +37,8 @@ export function App({ loadContent = loadBuiltInContent, createSession, sessionSe
   const setRegionId = useAppStore((state) => state.setRegionId)
   const setView = useAppStore((state) => state.setView)
   const setCurrentSessionId = useAppStore((state) => state.setCurrentSessionId)
-  const runSessionService = useMemo(() => new RunSessionService(new UserDataRepository()), [])
+  const userDataRepository = useMemo(() => new UserDataRepository(), [])
+  const runSessionService = useMemo(() => new RunSessionService(userDataRepository), [userDataRepository])
 
   /** 启动时加载并校验内置内容，失败时保留空内容以阻止会话创建。 */
   useEffect(() => {
@@ -50,6 +54,17 @@ export function App({ loadContent = loadBuiltInContent, createSession, sessionSe
     const service = sessionService ?? runSessionService
     void service.getResumableSession().then(setResumableSession).catch(() => setResumableSession(undefined))
   }, [runSessionService, sessionService])
+
+  /** 通过仓储读取当前会话的采集记录，并将最后一个已完成采集步骤转换为刷新估算。 */
+  useEffect(() => {
+    if (!activeSession || !content) { setRefreshEstimate({ kind: 'unknown' }); return }
+    let isCurrent = true
+    const readRecords = listCollectionRecords ?? (() => userDataRepository.listRecords())
+    void readRecords()
+      .then((records) => { if (isCurrent) setRefreshEstimate(getRefreshEstimate(activeSession, content, records)) })
+      .catch(() => { if (isCurrent) setRefreshEstimate({ kind: 'unknown' }) })
+    return () => { isCurrent = false }
+  }, [activeSession, content, listCollectionRecords, userDataRepository])
 
   const routeResult = useMemo(() => content && regionId ? planRoute(content, { materialIds: selectedMaterialIds, regionId }) : undefined, [content, selectedMaterialIds, regionId])
   const regionIds = useMemo(() => [...new Set(content?.mapLayers.map((layer) => layer.regionId) ?? [])], [content])
@@ -95,8 +110,20 @@ export function App({ loadContent = loadBuiltInContent, createSession, sessionSe
     setActiveSession(session)
   }
 
-  if (view === 'running') return <main className="app"><header className="app__header"><h1>原神跑图助手</h1><p>离线演示内容包</p></header><section className="app__workspace app__workspace--running"><div className="app__map"><h2>跑图模式</h2>{activeSession && content && <RouteMap session={activeSession} mapLayers={content.mapLayers} />}</div><aside className="app__step-card">{activeSession && <><RunMode session={activeSession} service={runSessionService} onSessionChange={updateActiveSession} /><RefreshStatus estimate={{ kind: 'unknown' }} /></>}</aside></section></main>
+  if (view === 'running') return <main className="app"><header className="app__header"><h1>原神跑图助手</h1><p>离线演示内容包</p></header><section className="app__workspace app__workspace--running"><div className="app__map"><h2>跑图模式</h2>{activeSession && content && <RouteMap session={activeSession} mapLayers={content.mapLayers} />}</div><aside className="app__step-card">{activeSession && <><RunMode session={activeSession} service={runSessionService} onSessionChange={updateActiveSession} /><RefreshStatus estimate={refreshEstimate} /></>}</aside></section></main>
   return <main className="app"><header className="app__header"><h1>原神跑图助手</h1><p>离线演示内容包</p></header>{loadError && <ErrorNotice message={loadError} />}<section className="app__workspace"> <aside className="app__materials">{resumableSession && <button type="button" onClick={() => resumeRun(resumableSession)}>继续上次跑图</button>}{content && <MaterialCatalog materials={content.materials} regionIds={regionIds} selectedMaterialIds={selectedMaterialIds} regionId={regionId} onSelectedMaterialIdsChange={changeSelectedMaterialIds} onRegionIdChange={changeRegionId} />}<BackupPanel /></aside><section className="app__route"><RouteSummary result={routeResult} disabled={!content || !routeResult || routeResult.kind !== 'planned'} onCreate={startRun} errorMessage={creationError} /></section></section></main>
+}
+
+/** 根据会话最后完成的采集步骤、对应记录和材料规则计算刷新状态，参数均为已加载的内存数据。 */
+function getRefreshEstimate(session: RunSession, content: ContentPackage, records: CollectionRecord[]): RefreshEstimate {
+  for (let index = session.currentStepIndex - 1; index >= 0; index -= 1) {
+    const step = session.routeSnapshot.steps[index]
+    if (!step || step.kind !== 'collect' || session.stepStates[index] !== 'completed') continue
+    const record = records.find((candidate) => candidate.sessionId === session.id && candidate.routeStepId === step.id)
+    const material = record && content.materials.find((candidate) => candidate.id === record.materialId)
+    if (record && material) return getNextAvailableAt(material.respawnRule, record.collectedAt, new Date())
+  }
+  return { kind: 'unknown' }
 }
 
 /** 判断创建接口返回值是否包含完整会话快照，参数 value 是外部创建回调的返回对象。 */
