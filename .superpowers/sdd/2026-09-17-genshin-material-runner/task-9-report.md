@@ -21,3 +21,10 @@
 - `git diff --check`：通过。
 - `rg -n -i "plugin|shell|fs:|http|global-shortcut|dangerous" src-tauri`：仅发现本地开发 URL/CSP 及 Cargo 文档链接，没有 capability 插件授权。
 - Node JSON 解析：`tauri.conf.json` 与 `capabilities/default.json` 均可解析。
+
+## 复审修正
+
+- 校验器现在强制 `build.devUrl` 精确等于 `http://localhost:5173`。
+- 生产 CSP 改为先解析指令和来源 token，再精确比较保守白名单：`default-src 'self'`、`img-src 'self' data:`，以及仅包含安全本地值的 `connect-src`、`script-src`、`style-src`、`object-src`、`base-uri`、`form-action`。额外指令、通配符、协议、主机与 `unsafe-*` token 均会被拒绝。
+- `app.capabilities` 显式锁定为 `["default"]`。校验器会枚举 capability 目录的全部 JSON 文件，目录只能包含 `default.json`，且其权限只能是 `core:default`。
+- 安全测试已拆分危险 CSP 与单独的 Shell 权限 fixture，并新增错误开发 URL、`unsafe-inline`、额外 app capability、额外 capability 文件的黑盒用例。复审后的安全用例为 6/6，全量 Vitest 为 69/69。

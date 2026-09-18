@@ -10,6 +10,9 @@
     "beforeBuildCommand": "npm run build"
   },
   "app": {
+    "capabilities": [
+      "default"
+    ],
     "windows": [
       {
         "title": "原神跑图助手",
