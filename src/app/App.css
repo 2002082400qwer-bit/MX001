@@ -1,2 +1,6 @@
 .app { max-width: 48rem; margin: 0 auto; padding: 1.5rem; }
 .app label, .app fieldset { display: block; margin-block: 0.75rem; }
+.route-map { height: 24rem; margin-block: 1rem; overflow: hidden; border: 1px solid #3a5870; border-radius: 0.5rem; }
+.route-map__canvas { height: 100%; width: 100%; background: #162333; }
+.run-mode { display: grid; gap: 0.75rem; }
+.run-mode__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }

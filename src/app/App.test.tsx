@@ -39,3 +39,27 @@ it('创建会话失败时保留材料选择并显示原因', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('会话保存失败')
   expect(mint).toBeChecked()
 })
+
+/** 验证用户修改筛选条件后会清除已过期的创建失败提示。 */
+it('修改筛选后清除创建会话失败提示', async () => {
+  const user = userEvent.setup()
+  render(<App createSession={async () => { throw new Error('会话保存失败') }} />)
+
+  const mint = await screen.findByRole('checkbox', { name: '薄荷' })
+  await user.click(mint)
+  await user.click(screen.getByRole('button', { name: '开始跑图' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('会话保存失败')
+  await user.click(mint)
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
+/** 验证应用重载时只通过会话服务发现可恢复会话，并提供明确的恢复入口。 */
+it('发现可恢复会话时显示继续上次跑图入口', async () => {
+  const service = { getResumableSession: vi.fn(async () => ({
+    id: 'resume-1', currentStepIndex: 0, stepStates: ['pending' as const], startedAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+    routeSnapshot: { id: 'route-1', templateIds: [], estimatedMinutes: 1, steps: [{ id: 'step-1', kind: 'note' as const, title: '继续点', message: '说明' }] },
+  })) }
+  render(<App sessionService={service} />)
+
+  expect(await screen.findByRole('button', { name: '继续上次跑图' })).toBeInTheDocument()
+})
