@@ -20,8 +20,8 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data:; connect-src 'self'; script-src 'self'; style-src 'self'",
-      "devCsp": "default-src 'self'; img-src 'self' data:; connect-src 'self' http://localhost:5173 ws://localhost:5173; script-src 'self'; style-src 'self'"
+      "csp": "default-src 'self'; img-src 'self' data:; connect-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'",
+      "devCsp": "default-src 'self'; img-src 'self' data:; connect-src 'self' http://localhost:5173 ws://localhost:5173; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     }
   },
   "bundle": {
