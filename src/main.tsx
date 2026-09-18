@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './app/App'
+import './styles/global.css'
 
 /** 启动 React 应用并将根组件挂载到 HTML 容器。 */
 function mountApplication(container: HTMLElement): void {

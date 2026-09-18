@@ -1,6 +1,18 @@
-.app { max-width: 48rem; margin: 0 auto; padding: 1.5rem; }
+.app { min-height: 100vh; max-width: 96rem; margin: 0 auto; padding: 1.5rem; }
+.app__header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--border-subtle); margin-bottom: 1.25rem; }
+.app__header h1 { margin: 0 0 0.75rem; font-size: clamp(1.5rem, 3vw, 2.25rem); }
+.app__header p { color: var(--text-muted); }
+.app__workspace { display: grid; grid-template-columns: minmax(17rem, 0.8fr) minmax(20rem, 1.2fr); align-items: start; gap: 1rem; }
+.app__workspace--running { grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.55fr); }
+.app__materials, .app__route, .app__step-card, .app__map { border: 1px solid var(--border-subtle); border-radius: 0.75rem; padding: 1rem; background: var(--surface-panel); box-shadow: var(--shadow-panel); }
+.app__materials { display: grid; gap: 1rem; }
+.app__materials > section + section { border-top: 1px solid var(--border-subtle); padding-top: 1rem; }
+.app__route { min-height: 12rem; }
 .app label, .app fieldset { display: block; margin-block: 0.75rem; }
-.route-map { height: 24rem; margin-block: 1rem; overflow: hidden; border: 1px solid #3a5870; border-radius: 0.5rem; }
+.route-map { height: min(62vh, 40rem); margin-block: 1rem; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 0.5rem; }
 .route-map__canvas { height: 100%; width: 100%; background: #162333; }
 .run-mode { display: grid; gap: 0.75rem; }
 .run-mode__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.refresh-status { color: var(--text-muted); border-top: 1px solid var(--border-subtle); margin-top: 1rem; padding-top: 0.75rem; }
+.refresh-status h3 { color: var(--text-primary); font-size: 1rem; margin: 0; }
+@media (max-width: 52rem) { .app__workspace, .app__workspace--running { grid-template-columns: 1fr; } .app { padding: 1rem; } .app__header { display: block; } }

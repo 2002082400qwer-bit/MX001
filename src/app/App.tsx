@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorNotice } from '../components/ErrorNotice'
+import { BackupPanel } from '../components/BackupPanel'
 import { MaterialCatalog } from '../components/MaterialCatalog'
+import { RefreshStatus } from '../components/RefreshStatus'
 import { RouteMap } from '../components/RouteMap'
 import { RunMode } from '../components/RunMode'
 import { RouteSummary } from '../components/RouteSummary'
@@ -93,8 +95,8 @@ export function App({ loadContent = loadBuiltInContent, createSession, sessionSe
     setActiveSession(session)
   }
 
-  if (view === 'running') return <main className="app"><h1>原神跑图助手</h1><h2>跑图模式</h2>{activeSession && <>{content && <RouteMap session={activeSession} mapLayers={content.mapLayers} />}<RunMode session={activeSession} service={runSessionService} onSessionChange={updateActiveSession} /></>}</main>
-  return <main className="app"><h1>原神跑图助手</h1>{loadError && <ErrorNotice message={loadError} />}{resumableSession && <button type="button" onClick={() => resumeRun(resumableSession)}>继续上次跑图</button>}{content && <MaterialCatalog materials={content.materials} regionIds={regionIds} selectedMaterialIds={selectedMaterialIds} regionId={regionId} onSelectedMaterialIdsChange={changeSelectedMaterialIds} onRegionIdChange={changeRegionId} />}<RouteSummary result={routeResult} disabled={!content || !routeResult || routeResult.kind !== 'planned'} onCreate={startRun} errorMessage={creationError} /></main>
+  if (view === 'running') return <main className="app"><header className="app__header"><h1>原神跑图助手</h1><p>离线演示内容包</p></header><section className="app__workspace app__workspace--running"><div className="app__map"><h2>跑图模式</h2>{activeSession && content && <RouteMap session={activeSession} mapLayers={content.mapLayers} />}</div><aside className="app__step-card">{activeSession && <><RunMode session={activeSession} service={runSessionService} onSessionChange={updateActiveSession} /><RefreshStatus estimate={{ kind: 'unknown' }} /></>}</aside></section></main>
+  return <main className="app"><header className="app__header"><h1>原神跑图助手</h1><p>离线演示内容包</p></header>{loadError && <ErrorNotice message={loadError} />}<section className="app__workspace"> <aside className="app__materials">{resumableSession && <button type="button" onClick={() => resumeRun(resumableSession)}>继续上次跑图</button>}{content && <MaterialCatalog materials={content.materials} regionIds={regionIds} selectedMaterialIds={selectedMaterialIds} regionId={regionId} onSelectedMaterialIdsChange={changeSelectedMaterialIds} onRegionIdChange={changeRegionId} />}<BackupPanel /></aside><section className="app__route"><RouteSummary result={routeResult} disabled={!content || !routeResult || routeResult.kind !== 'planned'} onCreate={startRun} errorMessage={creationError} /></section></section></main>
 }
 
 /** 判断创建接口返回值是否包含完整会话快照，参数 value 是外部创建回调的返回对象。 */
